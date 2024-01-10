@@ -1,0 +1,1 @@
+export { UserCountPostsArgs } from "./UserCountPostsArgs";

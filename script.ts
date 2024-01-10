@@ -3,13 +3,17 @@ import "reflect-metadata";
 import { PrismaClient, User } from "@prisma/client";
 import {
   AuthCheckerInterface,
-  Authorized,
   ResolverData,
   buildSchemaSync,
+  Authorized
 } from "type-graphql";
-import { resolvers, ModelsEnhanceMap, applyModelsEnhanceMap } from "@generated/type-graphql";
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
+import {
+  resolvers,
+  ResolversEnhanceMap,
+  applyResolversEnhanceMap,
+} from "./prisma/generated/type-graphql";
 
 export class CustomAuthChecker implements AuthCheckerInterface<any> {
   check({ root, args, context, info }: ResolverData<any>, roles: string[]) {
@@ -21,6 +25,14 @@ export class CustomAuthChecker implements AuthCheckerInterface<any> {
 }
 
 const prisma = new PrismaClient();
+
+const resolversEnhanceMap: ResolversEnhanceMap = {
+  User: {
+    findFirstUser: [Authorized(Role.ADMIN)],
+  },
+};
+
+applyResolversEnhanceMap(resolversEnhanceMap);
 
 async function main() {
   // const user = await prisma.user.create({
