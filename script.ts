@@ -3,22 +3,19 @@ import "reflect-metadata";
 import { PrismaClient, User } from "@prisma/client";
 import {
   AuthCheckerInterface,
+  Authorized,
   ResolverData,
   buildSchemaSync,
 } from "type-graphql";
-import { resolvers } from "@generated/type-graphql";
+import { resolvers, ModelsEnhanceMap, applyModelsEnhanceMap } from "@generated/type-graphql";
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
 
 export class CustomAuthChecker implements AuthCheckerInterface<any> {
-  constructor(
-    // Dependency injection
-    private readonly userRepository: any
-  ) {}
-
   check({ root, args, context, info }: ResolverData<any>, roles: string[]) {
-    console.log(">>> context = ", context);
-    console.log(">>> info = ", info);
+    console.log(">>> roles = ", roles);
+    // console.log(">>> args = ", args);
+    console.log(">>> info = ", info.fieldName);
     return true;
   }
 }
@@ -26,14 +23,41 @@ export class CustomAuthChecker implements AuthCheckerInterface<any> {
 const prisma = new PrismaClient();
 
 async function main() {
-  //   await prisma.user.create({
-  //     data: {
-  //       name: "Alice",
-  //       email: "alice@prisma.io",
-  //     },
-  //   });
-  //   const users = await prisma.user.findMany();
-  //   console.log(users);
+  // const user = await prisma.user.create({
+  //   data: {
+  //     name: "Paul",
+  //     email: "paul@prisma.io",
+  //   },
+  // });
+  
+  // await prisma.post.create({
+  //   data: {
+  //     title: "Post Title",
+  //     content: "SENSITIVE",
+  //     published: true,
+  //     authorId: user.id
+  //   },
+  // });
+
+  const modelsEnhanceMap: ModelsEnhanceMap = {
+    User: {
+      class: [],
+      fields: {
+        email: [Authorized("owner")],
+      },
+    },
+    Post: {
+      class: [],
+      fields: {
+        content: [Authorized("admin")],
+      },
+    },
+  };
+  
+  // apply the config (it will apply decorators on the model class and its properties)
+  applyModelsEnhanceMap(modelsEnhanceMap);
+
+
 
   const schema = await buildSchemaSync({
     resolvers,
