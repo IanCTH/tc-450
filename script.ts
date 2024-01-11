@@ -1,6 +1,6 @@
 import "reflect-metadata";
 
-import { PrismaClient, User } from "@prisma/client";
+import { PrismaClient, User, Post, Prisma } from "@prisma/client";
 import {
   AuthCheckerInterface,
   ResolverData,
@@ -16,6 +16,14 @@ import {
   ModelsEnhanceMap,
   applyModelsEnhanceMap,
 } from "./prisma/generated/type-graphql";
+
+import { PureAbility, AbilityBuilder, subject } from "@casl/ability";
+import {
+  accessibleBy,
+  createPrismaAbility,
+  PrismaQuery,
+  Subjects,
+} from "@casl/prisma";
 
 function makeid(length: number) {
   let result = "";
@@ -58,21 +66,21 @@ async function main() {
   //   },
   // });
 
-  let i = 10;
+  // let i = 5000;
 
-  while (i >= 0) {
-    console.log(">>> creating post ", i);
-    await prisma.post.create({
-      data: {
-        title: "Post Title",
-        content: makeid(10),
-        published: true,
-        authorId: 1,
-      },
-    });
+  // while (i >= 0) {
+  //   console.log(">>> creating post ", i);
+  //   await prisma.post.create({
+  //     data: {
+  //       title: "Post Title",
+  //       content: makeid(1000),
+  //       published: true,
+  //       authorId: 1,
+  //     },
+  //   });
 
-    i -= 1;
-  }
+  //   i -= 1;
+  // }
 
   const modelsEnhanceMap: ModelsEnhanceMap = {
     User: {
@@ -111,7 +119,46 @@ async function main() {
   console.log(`🚀  Server ready at: ${url}`);
 }
 
-main()
+async function casl() {
+  type AppAbility = PureAbility<
+    [
+      string,
+      Subjects<{
+        User: User;
+        Post: Post;
+      }>
+    ],
+    PrismaQuery
+  >;
+  const { can, cannot, build } = new AbilityBuilder<AppAbility>(
+    createPrismaAbility
+  );
+
+  can("read", "User");
+  cannot("read", "Post")
+  const ability = build();
+  ability.can("read", "User");
+  ability.cannot("read", "Post");
+
+  const start = new Date();
+  console.log(">> start = ", start.toISOString());
+
+  const accessibleUsers = await prisma.post.findMany({
+    where: accessibleBy(ability).Post,
+  });
+
+  const end = new Date();
+  console.log(">> end = ", end.toISOString());
+  console.log(">> total = ", (end.getTime() - start.getTime()) / 1000);
+  console.log(
+    ">>> accessiblePosts = ",
+    accessibleUsers.length,
+    accessibleUsers.length ? accessibleUsers[0] : null
+  );
+}
+
+// main()
+casl()
   .then(async () => {
     await prisma.$disconnect();
   })
