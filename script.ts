@@ -83,9 +83,7 @@ async function insertData() {
   }
 }
 
-async function main() {
-
-  // insertData()
+async function modelPermissions() {
   const modelsEnhanceMap: ModelsEnhanceMap = {
     User: {
       class: [],
@@ -103,7 +101,13 @@ async function main() {
 
   // apply the config (it will apply decorators on the model class and its properties)
   applyModelsEnhanceMap(modelsEnhanceMap);
+}
 
+async function main() {
+
+  // insertData()
+  modelPermissions()
+  
   const schema = await buildSchemaSync({
     resolvers,
     authChecker: CustomAuthChecker,
