@@ -8,7 +8,7 @@ import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
 import {
   resolvers,
-} from "./prisma/generated/type-graphql";
+} from "../prisma/generated/type-graphql";
 
 import { randomUUID } from "crypto";
 import { AbilityBuilder, MongoAbility, PureAbility, createMongoAbility } from "@casl/ability";
