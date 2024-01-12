@@ -58,30 +58,34 @@ const prisma = new PrismaClient();
 
 // applyResolversEnhanceMap(resolversEnhanceMap);
 
+async function insertData() {
+  const user = await prisma.user.create({
+    data: {
+      name: "Paul",
+      email: "paul@prisma.io",
+    },
+  });
+
+  let i = 5000;
+
+  while (i >= 0) {
+    console.log(">>> creating post ", i);
+    await prisma.post.create({
+      data: {
+        title: "Post Title",
+        content: makeid(1000),
+        published: true,
+        authorId: 1,
+      },
+    });
+
+    i -= 1;
+  }
+}
+
 async function main() {
-  // const user = await prisma.user.create({
-  //   data: {
-  //     name: "Paul",
-  //     email: "paul@prisma.io",
-  //   },
-  // });
 
-  // let i = 5000;
-
-  // while (i >= 0) {
-  //   console.log(">>> creating post ", i);
-  //   await prisma.post.create({
-  //     data: {
-  //       title: "Post Title",
-  //       content: makeid(1000),
-  //       published: true,
-  //       authorId: 1,
-  //     },
-  //   });
-
-  //   i -= 1;
-  // }
-
+  // insertData()
   const modelsEnhanceMap: ModelsEnhanceMap = {
     User: {
       class: [],
