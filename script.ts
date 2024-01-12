@@ -25,6 +25,8 @@ import {
   Subjects,
 } from "@casl/prisma";
 
+const prisma = new PrismaClient();
+
 function makeid(length: number) {
   let result = "";
   const characters =
@@ -47,16 +49,6 @@ export class CustomAuthChecker implements AuthCheckerInterface<any> {
     return true;
   }
 }
-
-const prisma = new PrismaClient();
-
-// const resolversEnhanceMap: ResolversEnhanceMap = {
-//   User: {
-//     findFirstUser: [Authorized("ADMIN")],
-//   },
-// };
-
-// applyResolversEnhanceMap(resolversEnhanceMap);
 
 async function insertData() {
   const user = await prisma.user.create({
@@ -83,7 +75,7 @@ async function insertData() {
   }
 }
 
-async function modelPermissions() {
+async function decorateModels() {
   const modelsEnhanceMap: ModelsEnhanceMap = {
     User: {
       class: [],
@@ -103,10 +95,19 @@ async function modelPermissions() {
   applyModelsEnhanceMap(modelsEnhanceMap);
 }
 
-async function main() {
+async function decorateResolvers() {
+  const resolversEnhanceMap: ResolversEnhanceMap = {
+    User: {
+      findFirstUser: [Authorized("ADMIN")],
+    },
+  };
+  applyResolversEnhanceMap(resolversEnhanceMap);
+}
 
+async function main() {
   // insertData()
-  modelPermissions()
+  decorateModels()
+  // decorateResolvers()
   
   const schema = await buildSchemaSync({
     resolvers,
@@ -114,16 +115,10 @@ async function main() {
   });
 
   const server = new ApolloServer({ schema });
-
-  // Passing an ApolloServer instance to the `startStandaloneServer` function:
-  //  1. creates an Express app
-  //  2. installs your ApolloServer instance as middleware
-  //  3. prepares your app to handle incoming requests
   const { url } = await startStandaloneServer(server, {
     context: async () => ({ prisma }),
     listen: { port: 4000 },
   });
-
   console.log(`🚀  Server ready at: ${url}`);
 }
 
