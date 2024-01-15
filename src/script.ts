@@ -15,7 +15,7 @@ import {
   applyResolversEnhanceMap,
   ModelsEnhanceMap,
   applyModelsEnhanceMap,
-} from "./prisma/generated/type-graphql";
+} from "../prisma/generated/type-graphql";
 
 import { PureAbility, AbilityBuilder, subject } from "@casl/ability";
 import {

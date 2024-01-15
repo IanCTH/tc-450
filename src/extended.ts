@@ -1,66 +1,92 @@
 import "reflect-metadata";
 
 import { PrismaClient, User, Post, Prisma } from "@prisma/client";
-import {
-  buildSchemaSync,
-} from "type-graphql";
+import { buildSchemaSync } from "type-graphql";
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
-import {
-  resolvers,
-} from "../prisma/generated/type-graphql";
+import { resolvers } from "../prisma/generated/type-graphql";
 
 import { randomUUID } from "crypto";
-import { AbilityBuilder, MongoAbility, PureAbility, createMongoAbility } from "@casl/ability";
-import { PrismaQuery, Subjects, createPrismaAbility } from "@casl/prisma";
+import {
+  AbilityBuilder,
+  MongoAbility,
+  PureAbility,
+  createMongoAbility,
+} from "@casl/ability";
+import {
+  PrismaQuery,
+  Subjects,
+  accessibleBy,
+  createPrismaAbility,
+} from "@casl/prisma";
 
 function defineAbilityFor(user: any) {
   const { can, cannot, build } = new AbilityBuilder(createMongoAbility);
 
   if (user.isAdmin) {
-    can('manage', 'all'); // read-write access to everything
+    can("manage", "all"); // read-write access to everything
   } else {
-    can('read', 'all') // read-only access to everything
+    can("read", "User");
+    cannot("read", "Post"); // read-only access to everything
   }
 
-  cannot('delete', 'Post', { published: true });
+  cannot("delete", "Post", { published: true });
   return build();
 }
 
-function addWhere(ability, { model, operation, args, query }) {
-  return args
+// WORKS!
+function isAuthorized(model: any, args: any, ability: any) {
+  const result = {
+    where: {
+      AND: [
+        //@ts-ignore
+        accessibleBy(ability)[model],
+        args,
+      ],
+    },
+  };
+  console.log(">> isAuthorized = ", JSON.stringify(result, null, 2));
+  return result;
+}
+
+// DOES NOT WORK: The posts are still being retreieved...
+function isAuthorizedUnique(model: any, args: any, ability: any) {
+  //@ts-ignore
+  args.where["AND"] = [accessibleBy(ability)[model]];
+  console.log(">> isAuthorizedUnique = ", JSON.stringify(args, null, 2));
+  return args;
 }
 
 function prismaClient(ability: MongoAbility) {
   return new PrismaClient().$extends({
     query: {
       $allModels: {
-         async findUnique ({ model, operation, args, query }) {
-          args = addWhere(ability, { model, operation, args, query })
-          return query(args)
+        async findUnique({ model, operation, args, query }) {
+          console.log(operation, args);
+          return query(isAuthorizedUnique(model, args, ability));
         },
-        async findUniqueOrThrow ({ model, operation, args, query }) {
-          console.log([model, operation, args, query])
-          return query(args)
+        async findUniqueOrThrow({ model, operation, args, query }) {
+          console.log(operation, args);
+          return query(isAuthorizedUnique(model, args, ability));
         },
-        async findFirst ({ model, operation, args, query }) {
-          console.log([model, operation, args, query])
-          return query(args)
+        async findFirst({ model, operation, args, query }) {
+          console.log(operation, args);
+          return query(isAuthorized(model, args, ability));
         },
-        async findFirstOrThrow ({ model, operation, args, query }) {
-          console.log([model, operation, args, query])
-          return query(args)
+        async findFirstOrThrow({ model, operation, args, query }) {
+          console.log(operation, args);
+          return query(isAuthorized(model, args, ability));
         },
         async findMany({ model, operation, args, query }) {
-          console.log([model, operation, args, query])
-          return query(args)
+          console.log(operation, args);
+          return query(isAuthorized(model, args, ability));
         },
       },
     },
-  })
+  });
 }
 
-const ability = defineAbilityFor({isAdmin: false});
+const ability = defineAbilityFor({ isAdmin: false });
 const prisma = prismaClient(ability);
 
 async function insertData() {
@@ -74,13 +100,13 @@ async function insertData() {
       },
     });
 
-    const postCount = 100 + Math.floor(Math.random() * 5)
+    const postCount = 100 + Math.floor(Math.random() * 5);
     // console.log(`Creating ${postCount} posts for user ${i}`)
     for (let j: number = 1; j <= postCount; j++) {
       await prisma.post.create({
         data: {
           title: `Post ${j} by User ${i}`,
-          content: Math.random() < 0.5 ? 'SENSITIVE DATA' : 'REGULAR DATA',
+          content: Math.random() < 0.5 ? "SENSITIVE DATA" : "REGULAR DATA",
           published: Math.random() < 0.5,
           authorId: user.id,
         },
